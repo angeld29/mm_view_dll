@@ -1,0 +1,289 @@
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <stb_image.h>
+
+//#include <learnopengl/filesystem.h>
+#include <learnopengl/shader_s.h>
+#include <learnopengl/camera.h>
+
+#include <iostream>
+#include "log.h"
+#include "lodfile.h"
+#include "aeTexture.h"
+#include "Render.h"
+#include "blvMap.h"
+#include <windows.h>
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void processInput(GLFWwindow *window);
+
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+GLFWwindow* InitGL()
+{
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
+#endif
+
+    // glfw window creation
+    // --------------------
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return NULL;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+
+    // tell GLFW to capture our mouse
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return NULL;
+    }
+    return window;
+}
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+//Camera camera(glm::vec3(0.0f, 12.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
+
+// timing
+float deltaTime = 0.0f;	// time between current frame and last frame
+float lastFrame = 0.0f;
+#define	EXPORT			__declspec( dllexport ) __cdecl
+#define PRIVATE			__cdecl
+
+BOOL PRIVATE Initialize(HANDLE hModule);
+BOOL APIENTRY DllMain( HANDLE hModule, 
+                       DWORD  ul_reason_for_call, 
+                       LPVOID lpReserved
+					 )
+{
+	BOOL hResult = TRUE;    
+
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+		hResult = Initialize(hModule);
+		break;
+	case DLL_PROCESS_DETACH:
+		hResult = TRUE;//hResult =   Unload();
+		break;
+	}
+	if(!hResult)TerminateProcess(GetCurrentProcess(),-1);//exit(-1);
+	return hResult;
+}
+BOOL PRIVATE Initialize(HANDLE hModule)
+{
+        FindMMVersion();
+	angel::Log.Init("angel.log");
+	return TRUE;
+}
+
+int main_func()
+{
+	angel::Log.Init("angel.log");
+  //  angel::Log.SetMsgLevel(angel::aeLog::LOG_DEBUG);
+	std::string gamedir( "../../mm6Data");
+	angel::LodManager.AddLod(gamedir + "/bitmaps.lod");
+	angel::LodManager.AddLod(gamedir + "/games.lod");
+	angel::LodManager.AddLod(gamedir + "/icons.lod");
+	angel::LodManager.AddLod(gamedir + "/events.lod");
+	angel::LodManager.AddLod(gamedir + "/sprites.lod");
+	angel::LodManager.AddLod(gamedir + "/EnglishD.lod");
+	angel::LodManager.AddLod(gamedir + "/EnglishT.lod");
+
+    GLFWwindow* window = InitGL();
+    if( !window ) { return -1; }
+    Render render;
+    glEnable(GL_DEPTH_TEST);
+
+    char mapname[0x1000];
+	GetPrivateProfileString( "Game","mapname" , "maps/d01.blv", mapname, sizeof(mapname),".\\config.ini");
+
+    angel::pLodData mapdata = angel::LodManager.LoadFileData( mapname);
+    if( GetPrivateProfileInt( "Game","save_map" , 0,".\\config.ini") )
+    {
+        ofstream OutFile;
+        OutFile.open(mapname, ios::out | ios::binary);
+        OutFile.write( (char*)&(*mapdata)[0], mapdata->size());
+        OutFile.close();    
+    }
+    angel::blvMap map(mapdata, mapname);
+
+    // render loop
+    // -----------
+
+    while (!glfwWindowShouldClose(window))
+    {
+        // per-frame time logic
+        // --------------------
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        // input
+        // -----
+        processInput(window);
+
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 100.0f, 100000.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+        glEnable( GL_CULL_FACE ); 
+        glCullFace( GL_BACK );
+        //glPolygonMode( GL_FRONT, GL_FILL );
+
+        //render.Draw(projection, view, camera);
+        map.Draw(projection, view, camera);
+        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // -------------------------------------------------------------------------------
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+
+    // glfw: terminate, clearing all previously allocated GLFW resources.
+    // ------------------------------------------------------------------
+    glfwTerminate();
+    return 0;
+}
+
+// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    float dt2 = deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        dt2 *= 3;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, dt2);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, dt2);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, dt2);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, dt2);
+}
+
+// glfw: whenever the mouse moves, this callback is called
+// -------------------------------------------------------
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouse)
+    {
+        lastX = (float)xpos;
+        lastY = (float)ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = (float)xpos - lastX;
+    float yoffset = lastY - (float)ypos; // reversed since y-coordinates go from bottom to top
+
+    lastX = (float)xpos;
+    lastY = (float)ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+// glfw: whenever the mouse scroll wheel scrolls, this callback is called
+// ----------------------------------------------------------------------
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll((float)yoffset);
+}
+
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and 
+    // height will be significantly larger than specified on retina displays.
+    glViewport(0, 0, width, height);
+}
+
+void CheckGlError(  const char *str )
+{
+    std::string errstr;
+	GLenum  err = glGetError();
+	switch( err )
+	{
+	case GL_NO_ERROR:
+		return;
+		break;
+	case GL_INVALID_ENUM:
+		errstr = "glError: GL_INVALID_ENUM";
+		break;
+	case GL_INVALID_VALUE:
+		errstr =  "glError: GL_INVALID_VALUE";
+		break;
+	case GL_INVALID_OPERATION:
+		errstr = "glError: GL_INVALID_OPERATION";
+		break;
+	case GL_STACK_OVERFLOW:
+		errstr = "glError: GL_STACK_OVERFLOW";
+		break;
+	case GL_STACK_UNDERFLOW:
+		errstr =  "glError: GL_STACK_UNDERFLOW";
+		break;
+	case GL_OUT_OF_MEMORY:
+		errstr =  "glError: GL_OUT_OF_MEMORY";
+		break;
+	default:
+		errstr =  "glError: Unknown " + std::to_string(err);
+	}
+    angel::Log << errstr << " (" << str << ")" << angel::aeLog::endl;
+}
+
+int MMVersion;
+
+void FindMMVersion()
+{
+	switch (*(byte*)0x41EDE1)  // just a random address
+	{
+		case 0xEC:
+			MMVersion = 6;
+			MainWindow = (HWND*)0x61076C;
+			SPStatKinds = MM6_SPStatKinds;
+			break;
+		case 0x45:
+			MMVersion = 7;
+			MainWindow = (HWND*)0x6BE174;
+			SPStatKinds = MM7_SPStatKinds;
+			break;
+		case 0x53:
+			MMVersion = 8;
+			MainWindow = (HWND*)0x6F3934;
+			SPStatKinds = MM8_SPStatKinds;
+			break;
+		default:
+			MessageBox(0, "This is not a supported Might and Magic game", "MMExtension Error", MB_ICONERROR);
+			ExitProcess(0);
+	}
+}
