@@ -17,6 +17,7 @@ add_library( ${NAME} SHARED
     src/log.cpp 
     src/lodfile.cpp
     src/aeTexture.cpp 
+    src/HelperFunctions.cpp
     include/glad.c 
     include/stb_image.cpp)       # Создает исполняемый файл с именем main
 find_package(OpenGL REQUIRED)

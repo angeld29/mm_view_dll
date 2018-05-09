@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include <windows.h>
 #define	EXPORT			__declspec( dllexport ) __cdecl
 #define PRIVATE			__cdecl
 

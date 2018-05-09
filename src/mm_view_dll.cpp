@@ -94,9 +94,12 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 	if(!hResult)TerminateProcess(GetCurrentProcess(),-1);//exit(-1);
 	return hResult;
 }
+void FindMMVersion();
+HWND *MainWindow;
+
 BOOL PRIVATE Initialize(HANDLE hModule)
 {
-        FindMMVersion();
+    FindMMVersion();
 	angel::Log.Init("angel.log");
 	return TRUE;
 }
@@ -265,22 +268,22 @@ int MMVersion;
 
 void FindMMVersion()
 {
-	switch (*(byte*)0x41EDE1)  // just a random address
+	switch (*(uint8_t*)0x41EDE1)  // just a random address
 	{
 		case 0xEC:
 			MMVersion = 6;
 			MainWindow = (HWND*)0x61076C;
-			SPStatKinds = MM6_SPStatKinds;
+			//SPStatKinds = MM6_SPStatKinds;
 			break;
 		case 0x45:
 			MMVersion = 7;
 			MainWindow = (HWND*)0x6BE174;
-			SPStatKinds = MM7_SPStatKinds;
+			//SPStatKinds = MM7_SPStatKinds;
 			break;
 		case 0x53:
 			MMVersion = 8;
 			MainWindow = (HWND*)0x6F3934;
-			SPStatKinds = MM8_SPStatKinds;
+			//SPStatKinds = MM8_SPStatKinds;
 			break;
 		default:
 			MessageBox(0, "This is not a supported Might and Magic game", "MMExtension Error", MB_ICONERROR);
