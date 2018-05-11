@@ -1,3 +1,7 @@
+MMExtension/
+Scripts/
+_build
+*.bat
 bin/
 lib/
 .vs
