@@ -23,6 +23,7 @@ void processInput(GLFWwindow *window);
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+
 GLFWwindow* InitGL()
 {
     // glfw: initialize and configure
@@ -41,24 +42,24 @@ GLFWwindow* InitGL()
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        angel::Log << "Failed to create GLFW window" << angel::aeLog::endl;
         glfwTerminate();
         return NULL;
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    //glfwSetCursorPosCallback(window, mouse_callback);
+    //glfwSetScrollCallback(window, scroll_callback);
 
     // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        angel::Log << "Failed to initialize GLAD" << angel::aeLog::endl;
         return NULL;
     }
     return window;
@@ -75,8 +76,27 @@ float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 #define	EXPORT			__declspec( dllexport ) __cdecl
 #define PRIVATE			__cdecl
+GLFWwindow* window;
 
-
+void InitWindow()
+{
+    angel::Log.Init("angel.log");
+    MessageBox( NULL, " dsad", "dasda", MB_OK );
+    angel::Log << "Init window start "  << angel::aeLog::endl;
+    window = InitGL();
+    angel::Log << "Init window " << window << angel::aeLog::endl;
+}
+void Draw()
+{
+    if( !window ) { return; }
+    if (!glfwWindowShouldClose(window))
+    {
+        // per-frame time logic
+        // --------------------
+        //glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+}
 int main_func()
 {
 	angel::Log.Init("angel.log");

@@ -15,6 +15,11 @@ void FindMMVersion()
 		case 0x45:
 			mm_info.version = 7;
 			mm_info.MainWindow = (HWND*)0x6BE174;
+            mm_info.init_hook[0] = 0x462da1;
+            //mm_info.init_hook[0] = 0x46548e;
+            mm_info.init_hook[1] = 5;
+            mm_info.draw_hook[0] = 0x44105f;
+            mm_info.draw_hook[1] = 5;
 			//SPStatKinds = MM7_SPStatKinds;
 			break;
 		case 0x53:
@@ -49,9 +54,45 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 	return hResult;
 }
 
+void InitWindow();
+void __declspec(naked) _initWindow()
+{
+	__asm {
+		nop									// Make room for original code
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		pushad
+		call InitWindow
+		popad
+		ret
+	}
+}
+void Draw();
+void __declspec(naked) _draw()
+{
+	__asm {
+		nop									// Make room for original code
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		pushad
+		call Draw
+		popad
+		ret
+	}
+}
+
 BOOL PRIVATE Initialize(HANDLE hModule)
 {
     FindMMVersion();
-	angel::Log.Init("angel.log");
-	return TRUE;
+    Intercept( INST_CALL, mm_info.init_hook[0], ( DWORD ) &_initWindow, mm_info.init_hook[1]);
+    Intercept( INST_CALL, mm_info.draw_hook[0], ( DWORD ) &_draw, mm_info.draw_hook[1]);
+    return TRUE;
 }
